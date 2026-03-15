@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, height=device-height, initial-scale=1, viewport-fit=cover, user-scalable=no"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#0b1c14" />
+    <title>Dongcheng Green Game Demo</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <div id="frame">
+        <div id="screen">
+          <canvas id="game" width="320" height="180"></canvas>
+          <div id="hud">
+            <div class="hud-left">
+              <div class="brand">DONGCHENG / GREEN MODE</div>
+              <div class="level" id="levelText">LEVEL 1 · HOME</div>
+            </div>
+            <div class="hud-right">
+              <div class="stat" id="statA">ENERGY 0</div>
+              <div class="stat" id="statB">WALLS 0</div>
+            </div>
+          </div>
+          <div id="tip">Tap on objects to interact</div>
+          <div id="controls">
+            <button class="scene-btn active" data-scene="0">A. 家在这儿</button>
+            <button class="scene-btn" data-scene="1">B. 绿电森林</button>
+            <button class="scene-btn" data-scene="2">C. 拆墙花园</button>
+            <button id="demoToggle" class="ghost-btn">Auto Demo</button>
+            <button id="soundToggle" class="ghost-btn">SFX Off</button>
+            <button id="fullscreenBtn" class="ghost-btn">Fullscreen</button>
+          </div>
+          <div id="gamepad">
+            <div class="pad dpad">
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <div class="pad ab">
+              <span>A</span>
+              <span>B</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="safe-note">
+        iPad 建议“添加到主屏幕”以接近全屏效果
+      </div>
+    </div>
+    <noscript>请启用 JavaScript 以播放演示。</noscript>
+    <script src="app.js"></script>
+  </body>
+</html>
