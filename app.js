@@ -17,14 +17,17 @@
   const H = canvas.height;
 
   const palette = {
-    sky: "#0c1d14",
-    sky2: "#123524",
+    sky: "#4aa3ff",
+    sky2: "#86c7ff",
     grass: "#1f7a4a",
     grass2: "#2ea866",
     mint: "#6bffb7",
     yellow: "#ffe66b",
     orange: "#ffb86b",
     red: "#ff6b6b",
+    wallRed: "#b84b4b",
+    wallRed2: "#9d3737",
+    wallRed3: "#c76a6a",
     wall: "#55635e",
     wall2: "#48524e",
     wall3: "#66726d",
@@ -52,6 +55,30 @@
 
   const rand = (min, max) => Math.random() * (max - min) + min;
   const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+  function createHomeBushes() {
+    const bushes = [];
+    const positions = [8, 150, 220, 270];
+    const towerMin = 34;
+    const towerMax = 132;
+    for (const baseX of positions) {
+      const w = Math.round(rand(22, 32));
+      const h = Math.round(rand(8, 12));
+      let x = Math.round(baseX + rand(-4, 4));
+      if (x < towerMax && x + w > towerMin) x = towerMax + 6;
+      const y = Math.round(rand(112, 118));
+      bushes.push({
+        x,
+        y,
+        w,
+        h,
+        skew: rand(-2, 2),
+        cap: Math.floor(rand(2, 4)),
+        highlight: Math.random() < 0.7
+      });
+    }
+    return bushes;
+  }
 
   function resize() {
     const vw = window.innerWidth;
@@ -123,6 +150,72 @@
     const swayX = Math.sin(sway) * amp * scale;
     pix(x - 4 * scale + swayX, y - trunkH - leafH + 1, leafW, leafH, palette.leaf);
     pix(x - 3 * scale + swayX, y - trunkH - leafH - 2, leafW - 2, leafH - 2, palette.tree);
+  }
+
+  function drawBush(bush) {
+    const { x, y, w, h, skew, cap, highlight } = bush;
+    const mid = (h - 1) / 2;
+    for (let row = 0; row < h; row++) {
+      const taper = Math.round(Math.abs(mid - row) * 0.9);
+      const rowW = Math.max(6, w - taper * 2);
+      const rowX = Math.round(x + taper + skew * (row / h - 0.5));
+      const rowY = y - h + row;
+      pix(rowX, rowY, rowW, 1, palette.leaf);
+      if (row > 1 && row < h - 1 && row % 2 === 0) {
+        pix(rowX + 2, rowY, Math.max(2, rowW - 4), 1, palette.tree);
+      }
+    }
+    for (let i = 0; i < cap; i++) {
+      const cx = x + 3 + Math.floor(((w - 8) * (i + 1)) / (cap + 1));
+      const cy = y - h - 1 - (i % 2);
+      pix(cx, cy, 4, 1, palette.leaf);
+      if (highlight && i % 2 === 0) {
+        pix(cx + 1, cy - 1, 1, 1, palette.mint);
+      }
+    }
+    pix(x + 1, y - 1, w - 2, 1, "#1b4a32");
+  }
+
+  function drawBicycle(x, y) {
+    const frame = palette.mint;
+    const frameDark = "#2a6b4b";
+    const rim = "#1a1a1a";
+    const rimLight = "#3a3a3a";
+    pix(x, y - 2, 4, 4, rim);
+    pix(x + 10, y - 2, 4, 4, rim);
+    pix(x + 1, y - 1, 2, 2, rimLight);
+    pix(x + 11, y - 1, 2, 2, rimLight);
+    pix(x + 2, y - 5, 6, 1, frame);
+    pix(x + 5, y - 7, 1, 3, frame);
+    pix(x + 7, y - 7, 1, 3, frame);
+    pix(x + 9, y - 6, 1, 4, frame);
+    pix(x + 1, y - 6, 1, 4, frame);
+    pix(x + 5, y - 8, 3, 1, frameDark);
+    pix(x + 9, y - 8, 3, 1, frameDark);
+    pix(x + 11, y - 9, 1, 1, frameDark);
+  }
+
+  function drawRedBrickWallSegment(x, y, w, h) {
+    const mortar = "#7a2f2f";
+    const brick = palette.wallRed2;
+    const brickDark = "#8a3434";
+    pix(x, y, w, h, mortar);
+    pix(x, y, w, 2, palette.wallRed3);
+    let row = 0;
+    for (let yy = y + 2; yy < y + h - 1; yy += 4) {
+      const offset = row % 2 === 0 ? 0 : 3;
+      for (let xx = x + 1 + offset; xx < x + w - 2; xx += 6) {
+        pix(xx, yy, 5, 2, brick);
+        pix(xx, yy + 2, 5, 1, brickDark);
+      }
+      row += 1;
+    }
+  }
+
+  function drawBikeRider(x, y) {
+    drawBicycle(x, y);
+    drawPerson(x + 6, y - 6, "#4aa3ff");
+    pix(x + 7, y - 8, 2, 1, palette.person);
   }
 
   function drawDrumTower(x, y) {
@@ -266,6 +359,7 @@
         { x: 120, y: 18, v: 1.4 },
         { x: 210, y: 26, v: 1.8 }
       ],
+      bushes: createHomeBushes(),
       time: 0
     };
     return {
@@ -287,29 +381,29 @@
         ctx.fillStyle = palette.sky;
         ctx.fillRect(0, 0, W, H);
         ctx.fillStyle = palette.sky2;
-        ctx.fillRect(0, 0, W, 70);
+        ctx.fillRect(0, 0, W, 60);
         for (const cloud of state.clouds) {
-          pix(cloud.x, cloud.y, 16, 5, "#1c3a2c");
-          pix(cloud.x + 6, cloud.y - 2, 10, 4, "#1b3328");
+          pix(cloud.x, cloud.y, 16, 5, "#ffffff");
+          pix(cloud.x + 6, cloud.y - 2, 10, 4, "#e6f3ff");
         }
 
-        pix(0, 120, W, 60, "#16402b");
+        pix(0, 70, W, 110, palette.grass);
+        pix(0, 100, W, 80, "#16402b");
         pix(0, 130, W, 50, "#133523");
         for (let i = 0; i < 16; i++) {
           const wallX = i * 20;
-          pix(wallX, 96, 18, 16, palette.wall);
-          pix(wallX + 2, 98, 14, 12, palette.wall2);
+          drawRedBrickWallSegment(wallX, 96, 18, 16);
         }
 
         const tower = drawDrumTower(44, 84);
+        for (const bush of state.bushes) {
+          drawBush(bush);
+        }
         pix(0, 135, W, 10, palette.road);
         pix(0, 145, W, 2, "#1b1f1d");
         for (const park of state.parks) drawPocketPark(park, state.time);
 
-        pix(state.bike.x, state.bike.y - 6, 10, 4, "#d9f2e5");
-        pix(state.bike.x + 2, state.bike.y - 8, 4, 3, palette.mint);
-        pix(state.bike.x + 1, state.bike.y - 2, 4, 4, "#1a1a1a");
-        pix(state.bike.x + 6, state.bike.y - 2, 4, 4, "#1a1a1a");
+        drawBikeRider(Math.round(state.bike.x), Math.round(state.bike.y));
 
         const label = "DRUM TOWER";
         const labelW = measurePixelText(label, 1, 1);
@@ -360,7 +454,8 @@
         x: rand(24, 296),
         y: rand(128, 166),
         scale: rand(0.7, 1.1),
-        sway: rand(0, Math.PI * 2)
+        sway: rand(0, Math.PI * 2),
+        grow: 0
       });
     }
     for (let i = 0; i < 5; i++) spawnTree();
@@ -374,19 +469,25 @@
           spawnOrb();
           state.spawnTimer = rand(0.6, 1.2);
         }
+        for (const tree of state.trees) {
+          tree.grow = clamp(tree.grow + dt * 0.45, 0, 1);
+        }
         for (const burst of state.bursts) {
           burst.t = clamp(burst.t - dt * 1.6, 0, 1);
         }
         state.bursts = state.bursts.filter((b) => b.t > 0);
       },
       draw() {
-        ctx.fillStyle = "#0b1f15";
+        ctx.fillStyle = palette.sky;
         ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = palette.sky2;
+        ctx.fillRect(0, 0, W, 60);
         pix(0, 90, W, 90, "#0f2a1c");
         pix(0, 120, W, 60, "#123321");
 
         for (const tree of state.trees) {
-          drawTree(tree.x, tree.y, tree.scale, state.time + tree.sway, 0.5);
+          const growth = 0.3 + tree.grow * 0.7;
+          drawTree(tree.x, tree.y, tree.scale * growth, state.time + tree.sway, 0.5);
         }
 
         for (const orb of state.orbs) {
@@ -433,34 +534,100 @@
     const wall = { x: 18, y: 70, w: 284, h: 40, segs: 6 };
     const state = {
       label: "LEVEL 3 - WALL BREAKER",
-      tip: "Tap the wall to break and grow flowers.",
-      broken: Array.from({ length: wall.segs }, () => false),
+      tip: "Drag the hammer, release to strike twice.",
+      hits: Array.from({ length: wall.segs }, () => 0),
       flowers: [],
-      time: 0
+      clouds: [
+        { x: 8, y: 24, v: 1.6 },
+        { x: 120, y: 18, v: 1.2 },
+        { x: 210, y: 26, v: 1.4 }
+      ],
+      time: 0,
+      tool: {
+        x: W - 38,
+        y: 118,
+        w: 12,
+        h: 18,
+        dragging: false,
+        grabX: 0,
+        grabY: 0
+      }
     };
+    const flowerPalette = [palette.flower, palette.flower2, palette.yellow, palette.orange, palette.mint];
+    function segmentBounds(index) {
+      const baseW = Math.floor(wall.w / wall.segs);
+      const remainder = wall.w - baseW * wall.segs;
+      const extra = index < remainder ? 1 : 0;
+      const x = wall.x + index * baseW + Math.min(index, remainder);
+      return { x, w: baseW + extra };
+    }
+
     function spawnFlowers(segIndex) {
-      const segW = wall.w / wall.segs;
-      const baseX = wall.x + segW * segIndex + 3;
-      const maxX = wall.x + segW * (segIndex + 1) - 3;
-      for (let i = 0; i < 12; i++) {
+      const seg = segmentBounds(segIndex);
+      const baseX = seg.x + 2;
+      const maxX = seg.x + seg.w - 3;
+      const count = Math.floor(rand(14, 24));
+      for (let i = 0; i < count; i++) {
         state.flowers.push({
           x: rand(baseX, maxX),
-          y: wall.y + wall.h - 2 + rand(-4, 1),
+          y: wall.y + wall.h - 2 + rand(-5, 2),
           t: 0,
-          color: i % 2 === 0 ? palette.flower : palette.flower2
+          color: flowerPalette[Math.floor(rand(0, flowerPalette.length))],
+          accent: flowerPalette[Math.floor(rand(0, flowerPalette.length))],
+          variant: Math.floor(rand(0, 3)),
+          height: rand(0.6, 1.2),
+          leaf: Math.floor(rand(-1, 2)),
+          sway: rand(0.2, 0.8),
+          phase: rand(0, Math.PI * 2)
         });
       }
     }
 
-    function drawWallSegment(segX, segW) {
-      pix(segX, wall.y, segW, wall.h, palette.wall);
-      for (let x = segX; x < segX + segW; x += 12) {
+    function spawnCrackDebris(segIndex) {
+      const seg = segmentBounds(segIndex);
+      for (let i = 0; i < 6; i++) {
+        state.flowers.push({
+          x: rand(seg.x + 2, seg.x + seg.w - 3),
+          y: wall.y + wall.h - 3 + rand(-2, 1),
+          t: 0,
+          color: palette.wall2,
+          accent: palette.wall3,
+          variant: 2,
+          height: rand(0.3, 0.5),
+          leaf: 0,
+          sway: 0,
+          phase: rand(0, Math.PI * 2)
+        });
+      }
+    }
+
+    function hitWallAt(x, y) {
+      if (x < wall.x || x > wall.x + wall.w || y < wall.y || y > wall.y + wall.h) return;
+      let idx = -1;
+      for (let i = 0; i < wall.segs; i++) {
+        const seg = segmentBounds(i);
+        if (x >= seg.x && x <= seg.x + seg.w) {
+          idx = i;
+          break;
+        }
+      }
+      if (idx < 0) return;
+      if (state.hits[idx] < 2) {
+        state.hits[idx] += 1;
+        if (state.hits[idx] === 1) spawnCrackDebris(idx);
+        if (state.hits[idx] === 2) spawnFlowers(idx);
+      }
+    }
+
+    function drawWallBase() {
+      pix(wall.x, wall.y, wall.w, wall.h, palette.wall);
+      for (let x = wall.x; x < wall.x + wall.w; x += 12) {
         pix(x + 1, wall.y - 4, 8, 4, palette.wall3);
       }
       let row = 0;
       for (let y = wall.y + 6; y < wall.y + wall.h - 6; y += 6) {
         const offset = row % 2 === 0 ? 2 : 8;
-        for (let x = segX + offset; x < segX + segW - 8; x += 12) {
+        for (let x = wall.x + offset; x < wall.x + wall.w - 8; x += 12) {
           pix(x, y, 8, 2, palette.wall2);
         }
         row += 1;
@@ -482,61 +649,160 @@
       pix(segX + segW - 4, wall.y + 2, 2, 1, crack);
     }
 
+    function drawCrackField(segX, segW, seed) {
+      const crack = "#2c2f2d";
+      const rows = 3;
+      const cols = 4;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const offset = (seed + r * 3 + c * 5) % 7;
+          const px = segX + 3 + c * Math.floor(segW / cols) + (offset % 3);
+          const py = wall.y + 8 + r * 9 + (offset % 2);
+          if (px < segX + segW - 3 && py < wall.y + wall.h - 6) {
+            pix(px, py, 1, 2, crack);
+            if (offset % 2 === 0) pix(px + 1, py + 1, 1, 1, crack);
+            if (offset % 3 === 0) pix(px - 1, py + 2, 1, 1, crack);
+          }
+        }
+      }
+    }
+
+    function drawWallTool(x, y) {
+      const metal = "#cfd6d4";
+      const metalDark = "#a8b0ad";
+      pix(x + 5, y + 4, 2, 14, palette.wood2);
+      pix(x + 5, y + 2, 2, 2, palette.woodShadow);
+      pix(x + 4, y + 3, 4, 2, palette.wood);
+      pix(x + 1, y, 10, 4, metal);
+      pix(x, y + 1, 2, 2, metalDark);
+      pix(x + 10, y + 1, 2, 2, metalDark);
+      pix(x + 3, y + 1, 4, 2, "#e6ecea");
+    }
+
+    function drawWildFlower(flower, time) {
+      if (flower.variant === 2 && flower.height < 0.6) {
+        const fx = Math.round(flower.x);
+        const fy = Math.round(flower.y);
+        const size = Math.max(1, Math.round(2 * flower.t));
+        pix(fx, fy - 1, size, 1, flower.color);
+        pix(fx + 1, fy - 2, 1, 1, flower.accent);
+        return;
+      }
+      const sway = Math.round(Math.sin(time * 1.2 + flower.phase) * flower.sway);
+      const fx = Math.round(flower.x) + sway;
+      const fy = Math.round(flower.y);
+      const height = Math.max(2, Math.round((4 + flower.variant * 1.5) * flower.height * flower.t));
+      pix(fx, fy - height, 1, height, palette.tree);
+      pix(fx + flower.leaf, fy - height + 2, 2, 1, palette.leaf);
+      const bloomY = fy - height - 2;
+      if (flower.variant === 1) {
+        pix(fx - 1, bloomY, 3, 2, flower.color);
+        pix(fx - 2, bloomY + 1, 1, 1, flower.color);
+        pix(fx + 2, bloomY + 1, 1, 1, flower.color);
+        pix(fx, bloomY, 1, 1, flower.accent);
+      } else if (flower.variant === 2) {
+        pix(fx - 1, bloomY - 1, 3, 1, flower.color);
+        pix(fx - 1, bloomY, 3, 1, flower.color);
+        pix(fx, bloomY - 2, 1, 1, flower.accent);
+      } else {
+        pix(fx - 1, bloomY, 3, 1, flower.color);
+        pix(fx, bloomY - 1, 1, 3, flower.color);
+        pix(fx, bloomY, 1, 1, flower.accent);
+      }
+    }
+
     return {
       label: state.label,
       tip: state.tip,
+      reset() {
+        state.tool.x = W - 38;
+        state.tool.y = 118;
+        state.tool.dragging = false;
+      },
       update(dt) {
         state.time += dt;
         for (const flower of state.flowers) {
           flower.t = clamp(flower.t + dt * 0.6, 0, 1);
         }
+        for (const cloud of state.clouds) {
+          cloud.x += cloud.v * dt;
+          if (cloud.x > W + 30) cloud.x = -40;
+        }
       },
       draw() {
-        ctx.fillStyle = "#0c1f16";
+        ctx.fillStyle = palette.sky;
         ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = palette.sky2;
+        ctx.fillRect(0, 0, W, 60);
+        for (const cloud of state.clouds) {
+          pix(cloud.x, cloud.y, 16, 5, "#ffffff");
+          pix(cloud.x + 6, cloud.y - 2, 10, 4, "#e6f3ff");
+        }
         pix(0, 112, W, 68, "#163b28");
         pix(0, 132, W, 48, "#123321");
 
-        const segW = wall.w / wall.segs;
+        drawWallBase();
         for (let i = 0; i < wall.segs; i++) {
-          if (state.broken[i]) continue;
-          const segX = wall.x + segW * i;
-          drawWallSegment(segX, segW);
+          const seg = segmentBounds(i);
+          if (state.hits[i] === 1) {
+            drawCrack(seg.x, seg.w, i);
+            drawCrackField(seg.x, seg.w, i);
+          }
         }
 
         for (let i = 0; i < wall.segs; i++) {
-          if (!state.broken[i]) continue;
-          const holeX = wall.x + segW * i;
-          pix(holeX, wall.y, segW, wall.h, "#0c1f16");
-          pix(holeX + 1, wall.y + wall.h - 8, segW - 2, 6, "#1b4a32");
-          drawCrack(holeX, segW, i);
+          if (state.hits[i] < 2) continue;
+          const seg = segmentBounds(i);
+          pix(seg.x, wall.y - 4, seg.w, 4, palette.sky);
+          pix(seg.x, wall.y, seg.w, wall.h, palette.sky);
+          pix(seg.x + 1, wall.y + wall.h - 8, seg.w - 2, 6, "#1b4a32");
+          pix(seg.x + 2, wall.y + wall.h - 9, seg.w - 4, 1, "#245a3d");
         }
 
         for (const flower of state.flowers) {
-          drawFlower(Math.round(flower.x), Math.round(flower.y), flower.color, flower.t);
+          drawWildFlower(flower, state.time);
         }
+
+        drawWallTool(state.tool.x, state.tool.y);
       },
-      onTap(x, y) {
-        if (x >= wall.x && x <= wall.x + wall.w && y >= wall.y && y <= wall.y + wall.h) {
-          const segW = wall.w / wall.segs;
-          const idx = Math.floor((x - wall.x) / segW);
-          if (!state.broken[idx]) {
-            state.broken[idx] = true;
-            spawnFlowers(idx);
-          }
+      onTap() {},
+      onPointerDown(x, y) {
+        if (
+          x >= state.tool.x &&
+          x <= state.tool.x + state.tool.w &&
+          y >= state.tool.y &&
+          y <= state.tool.y + state.tool.h
+        ) {
+          state.tool.dragging = true;
+          state.tool.grabX = x - state.tool.x;
+          state.tool.grabY = y - state.tool.y;
+          return true;
         }
+        return true;
+      },
+      onPointerMove(x, y) {
+        if (!state.tool.dragging) return;
+        state.tool.x = clamp(x - state.tool.grabX, 0, W - state.tool.w);
+        state.tool.y = clamp(y - state.tool.grabY, 0, H - state.tool.h);
+      },
+      onPointerUp() {
+        if (!state.tool.dragging) return;
+        state.tool.dragging = false;
+        const hitX = state.tool.x + state.tool.w / 2;
+        const hitY = state.tool.y + 2;
+        hitWallAt(hitX, hitY);
       },
       autoTap() {
-        for (let i = 0; i < state.broken.length; i++) {
-          if (!state.broken[i]) {
-            this.onTap(wall.x + (i + 0.5) * (wall.w / wall.segs), wall.y + 6);
+        for (let i = 0; i < state.hits.length; i++) {
+          if (state.hits[i] < 2) {
+            hitWallAt(wall.x + (i + 0.5) * (wall.w / wall.segs), wall.y + 6);
             break;
           }
         }
       },
       statA() {
-        const count = state.broken.filter(Boolean).length;
-        return `WALLS ${count}/${state.broken.length}`;
+        const count = state.hits.filter((hit) => hit >= 2).length;
+        return `WALLS ${count}/${state.hits.length}`;
       },
       statB() {
         return `FLOWERS ${state.flowers.length}`;
@@ -554,6 +820,7 @@
   function setScene(index) {
     sceneIndex = index;
     scene = scenes[sceneIndex];
+    if (scene.reset) scene.reset();
     if (levelText) levelText.textContent = scene.label;
     if (tipEl) tipEl.textContent = scene.tip;
     const buttons = document.querySelectorAll(".scene-btn");
@@ -581,7 +848,21 @@
 
   screen.addEventListener("pointerdown", (event) => {
     event.preventDefault();
-    handleTap(event.clientX, event.clientY, true);
+    const { x, y } = toGameCoords(event.clientX, event.clientY);
+    const handled = scene.onPointerDown ? scene.onPointerDown(x, y) : false;
+    if (!handled) handleTap(event.clientX, event.clientY, true);
+  });
+
+  screen.addEventListener("pointermove", (event) => {
+    if (!scene.onPointerMove) return;
+    const { x, y } = toGameCoords(event.clientX, event.clientY);
+    scene.onPointerMove(x, y);
+  });
+
+  screen.addEventListener("pointerup", (event) => {
+    if (!scene.onPointerUp) return;
+    const { x, y } = toGameCoords(event.clientX, event.clientY);
+    scene.onPointerUp(x, y);
   });
 
   document.querySelectorAll(".scene-btn").forEach((btn) => {
